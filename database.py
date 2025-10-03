@@ -26,6 +26,7 @@ if __name__ == "__main__":
 
     db_name = "FlightManagement.db"
 
+    # Flight data
     flight_table = "Flights"
     flight_columns = """(
         FlightID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,6 +57,7 @@ if __name__ == "__main__":
         (None, "AI555", "2025-09-22 23:00", "2025-09-23 07:00", "On Time", 10, 6)
     ]
 
+    # Destination data
     destination_table = "Destinations"
     destination_columns = """(
         DestinationID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,6 +78,7 @@ if __name__ == "__main__":
         (None, "Singapore", "Singapore", "SIN")
     ]
 
+    # Pilot data
     pilot_table = "Pilots"
     pilot_columns = """(
         PilotID INTEGER PRIMARY KEY AUTOINCREMENT,
