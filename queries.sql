@@ -5,10 +5,10 @@ DROP TABLE IF EXISTS Flights
 CREATE TABLE Flights(
     FlightID INTEGER PRIMARY KEY AUTOINCREMENT,
     FlightNumber TEXT UNIQUE NOT NULL,
-    DepartureTime TEXT NOT NULL,
-    ArrivalTime TEXT NOT NULL,
+    DepartureTime TEXT,
+    ArrivalTime TEXT,
     Status TEXT NOT NULL,
-    OriginID INTERGER NOT NULL,
+    OriginID INTEGER NOT NULL,
     DestinationID INTEGER NOT NULL,
     PilotID INTEGER,
     AirplaneID INTEGER,
