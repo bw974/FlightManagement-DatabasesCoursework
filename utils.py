@@ -19,11 +19,6 @@ def validate_int(value: any) -> bool:
         return False
 
 
-# Check the string value is not empty
-def validate_nonempty_string(value: str) -> bool:
-    return bool(value and value.strip())
-
-
 # Retrieve the flight record based on a user input flight number
 def get_flight(self) -> tuple:
     while True:
@@ -31,9 +26,6 @@ def get_flight(self) -> tuple:
         flight = self.db.select_by_criteria("Flights", {"FlightNumber": flight_num})
         if not flight:
             print("Flight not found, enter a valid flight number, usage: BAXXX\n")
-            continue
-        if flight[0][4] == "Cancelled":
-            print(f"Flight {flight_num} is cancelled and cannot be updated\n")
             continue
         return flight[0]
 

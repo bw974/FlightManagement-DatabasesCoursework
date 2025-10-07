@@ -127,6 +127,10 @@ class Pilot:
             flight = get_flight(self)
             flight_id = flight[0]
             flight_num = flight[1]
+            flight_status = flight[4]
+            if flight_status == "Cancelled":
+                print(f"Flight {flight_num} is cancelled and cannot be updated\n")
+                return
             flight_dep_time = datetime.strptime(flight[2], "%Y-%m-%d %H:%M")
             flight_arr_time = datetime.strptime(flight[3], "%Y-%m-%d %H:%M")
         except Exception as e:
@@ -183,7 +187,7 @@ class Pilot:
             return
 
         # Get pilot's flight schedule
-        flights = self.db.select_flights_with_joins({"PilotID": pilot_id})
+        flights = self.db.select_flights_with_joins({"Flights.PilotID": pilot_id})
 
         columns = ["FlightID", "Flight Number", "Departure Time", "Arrival Time", "Status", "Origin", "Destination", "Pilot", "Airplane"]
         print_table(flights, columns, title=f"Flight Schedule for Pilot {pilot_name}")

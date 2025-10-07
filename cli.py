@@ -37,8 +37,8 @@ def print_table(data: list[tuple], columns: list[str], title: str) -> None:
     # Skip first column of table which is the ID primary key but not relevant to user
     for col in columns[1:]:
         table.add_column(col, style="cyan", no_wrap=True)
-
+    # For any null values such as dep/arr time for cancelled flight or pilot/airplane yet to be assigned, mark cell with a dash (-)
     for row in data:
-        table.add_row(*(str(item) if item is not None else "N/A" for item in row[1:]))
+        table.add_row(*(str(item) if item not in [None, " "] else "-" for item in row[1:]))
     console.print()
     console.print(table)

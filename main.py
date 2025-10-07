@@ -1,3 +1,4 @@
+import os
 from database import setup_database
 import airplane, airport, cli, config, flight, pilot, summary
 
@@ -22,6 +23,10 @@ def choose_option(operations: dict, options_list: list[str]):
 
 # Main program
 def main():
+    # If the FlightManagement.db database does not exist when running the program, create and populate it
+    if not os.path.exists("FlightManagement.db"):
+        setup_database()
+
     # Initialise each table's query objects and functions
     airplane_options = airplane.Airplane()
     airport_options = airport.Airport()

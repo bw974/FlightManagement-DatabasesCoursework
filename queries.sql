@@ -44,4 +44,40 @@ CREATE TABLE Airplanes(
     Model TEXT NOT NULL
 )
 
--- Example SQL queries for different CRUD operations used throughout the program
+-- Example SQL queries for different CRUD operations used throughout the program, some were used programmatically such as INSERT
+
+-- Show details of all flights by joining flight table with airport, pilot and airplanes tables
+SELECT Flights.FlightID,
+    Flights.FlightNumber,
+    Flights.DepartureTime,
+    Flights.ArrivalTime,
+    Flights.Status,
+    Origin.AirportCode AS Origin,
+    Destination.AirportCode AS Destination,
+    CONCAT(Pilots.FirstName, " ", Pilots.LastName) AS Pilot,
+    Airplanes.Registration AS Airplane
+FROM Flights
+JOIN Airports AS Origin ON Flights.OriginID = Origin.AirportID
+JOIN Airports AS Destination ON Flights.DestinationID = Destination.AirportID
+LEFT JOIN Pilots ON Flights.PilotID = Pilots.PilotID
+LEFT JOIN Airplanes ON Flights.AirplaneID = Airplanes.AirplaneID
+
+-- Count the number of flights going to each destination and sort by the count in descending order
+SELECT FlightID, Destination.AirportCode AS Destination, COUNT(Flights.FlightID) AS NumFlights
+FROM Flights
+JOIN Airports AS Destination ON Flights.DestinationID = Destination.AirportID
+GROUP BY Destination.AirportCode
+ORDER BY NumFlights DESC
+
+-- Insert new pilot record to the database
+INSERT INTO Pilots
+VALUES (None, "Jean", "Paul", "Captain", 12)
+
+-- Update airport record to change the airport name of Heathrow
+UPDATE Airports
+SET AirportName = "London Heathrow Airport"
+WHERE AirportCode = "LHR"
+
+-- Delete an airplane record of reg G-ABCD
+DELETE FROM Airplanes
+WHERE Registration = "G-ABCD"

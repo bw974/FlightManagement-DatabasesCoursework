@@ -116,8 +116,13 @@ class Airplane:
             flight = get_flight(self)
             flight_id = flight[0]
             flight_num = flight[1]
+            flight_status = flight[4]
+            if flight_status == "Cancelled":
+                print(f"Flight {flight_num} is cancelled and cannot be updated\n")
+                return
             flight_dep_time = datetime.strptime(flight[2], "%Y-%m-%d %H:%M")
             flight_arr_time = datetime.strptime(flight[3], "%Y-%m-%d %H:%M")
+
         except Exception as e:
             print(f"Error finding flight: {e}\n")
             return

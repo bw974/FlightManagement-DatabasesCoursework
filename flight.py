@@ -1,7 +1,7 @@
 import re
 from cli import print_table
 from database import DBOperations
-from utils import validate_datetime
+from utils import get_flight, validate_datetime
 
 
 class Flight:
@@ -39,12 +39,6 @@ class Flight:
             break
 
         while True:
-            status = input("Enter status (On Time, Delayed or Cancelled): ").strip().title()
-            if status in ["On Time", "Delayed", "Cancelled"]:
-                break
-            print("Invalid status format, usage: On Time, Delayed or Cancelled\n")
-
-        while True:
             origin_airport_code = input("Enter origin airport code (e.g. LHR): ").strip().upper()
             origin_airport = self.db.select_by_criteria("Airports", {"AirportCode": origin_airport_code})
             if origin_airport:
@@ -63,22 +57,20 @@ class Flight:
                 continue
             destination_id = destination_airport[0][0]
             break
-
-        self.db.insert("Flights", (None, flight_num, dep_time, arr_time, status, origin_id, destination_id, None, None))
+        # Add new flight record where status is On Time by default and the pilot/airplane are assigned by another airline employee later
+        self.db.insert("Flights", (None, flight_num, dep_time, arr_time, "On Time", origin_id, destination_id, None, None))
         print("New flight added successfully, assign pilot and airplane under respective menus")
 
 
     # View flights by specific criteria such as departure date, status, destination etc.
     def view_flights_by_criteria(self) -> None:
+        print("\nSearch Criteria:")
         criteria_map = {
-            "flight number": "FlightNumber",
-            "departure date": "DATE(Flights.DepartureTime)",
-            "arrival date": "DATE(Flights.ArrivalTime)",
-            "status": "Flights.Status",
-            "origin airport code": "Origin.AirportCode",
-            "destination airport code": "Destination.AirportCode",
-            "pilot name": "PilotName",
-            "airplane": "Registration"
+            "departure date": "DATE(DepartureTime)",
+            "arrival date": "DATE(ArrivalTime)",
+            "status": "Status",
+            "origin": "Origin",
+            "destination": "Destination"
         }
 
         for key in criteria_map.keys():
@@ -88,17 +80,23 @@ class Flight:
             choice = input("\nEnter search criteria (e.g. Departure Date): ").strip().lower()
             if choice in criteria_map:
                 break
-            print("Invalid criteria option, try again, usage: Departure Date\n")
+            print("Invalid criteria option, try again, usage: Departure Date, Arrival Date, Status, Origin, Destination\n")
 
         while True:
-            value = input(f"Enter value for {choice.title()} (case-sensitive): ").strip()
+            if choice in ["departure date", "arrival date"]:
+                value = input(f"Enter value for {choice.title()} (YYYY-MM-DD): ").strip()
+            if choice == "status":
+                value = input(f"Enter value for {choice.title()} (On Time, Delayed or Cancelled): ").strip().title()
+            if choice in ["origin", "destination"]:
+                value = input(f"Enter value for {choice.title()} (e.g. LHR): ").strip().upper()
+
             criteria = {criteria_map[choice]: value}
             flights = self.db.select_flights_with_joins(criteria)
             if flights:
                 break
             print(f"\nNo flights found for {choice.title()} {value}, try again\n")
 
-        columns = ["Flight Number", "Departure Time", "Arrival Time", "Status", "Origin", "Destination", "Pilot", "Airplane"]
+        columns = ["FlightID", "Flight Number", "Departure Time", "Arrival Time", "Status", "Origin", "Destination", "Pilot", "Airplane"]
         print_table(flights, columns, title=f"Flights for {choice.title()} {value}")
 
 
@@ -114,46 +112,61 @@ class Flight:
 
     # Update an existing flight schedule such as changing departure time or status
     def update_flight(self) -> None:
-        while True:
-            flight_num = input("Enter flight number of flight to update: ").strip().upper()
-            if bool(re.fullmatch(r"[A-Z]{2}\d{3}", flight_num)):
-                flight = self.db.select_by_criteria("Flights", {"FlightNumber": flight_num})
-                if flight:
-                    break
-                print(f"Flight {flight_num} not found")
-            else:
-                print("Invalid flight number format, usage: AA000")
+        try:
+            flight = get_flight(self)
+            flight_num = flight[1]
+            flight_status = flight[4]
+            if flight_status == "Cancelled":
+                print(f"Flight {flight_num} is cancelled and cannot be updated\n")
+                return
+        except Exception as e:
+            print(f"Error finding flight: {e}\n")
+            return
 
         flight_id = flight[0]
-        print("Leave field blank to keep current value.")
+        print("Enter nothing to keep current value:")
 
         while True:
-            flight_num = input(f"New flight number ({flight[1]}): ").strip().upper() or flight[1]
-            if bool(re.fullmatch(r"[A-Z]{2}\d{3}", flight_num)):
-                break
-            print("Invalid flight number format")
-
-        while True:
-            dep_time = input(f"New departure time ({flight[2]}): ").strip() or flight[2]
-            if validate_datetime(dep_time):
-                break
-            print("Invalid datetime format, try again")
-
-        while True:
-            arr_time = input(f"New arrival time ({flight[3]}): ").strip() or flight[3]
-            if validate_datetime(arr_time):
-                break
-            print("Invalid datetime format, try again")
-        
-        while True:
-            status = input(f"New status (On Time, Delayed or Cancelled) ({flight[4]}): ").strip().title() or flight[4]
+            status = input(f"Enter new status (On Time, Delayed or Cancelled - current: {flight[4]}): ").strip().title() or flight[4]
             if status in ["On Time", "Delayed", "Cancelled"]:
                 break
             print("Invalid status format, choose either: On Time, Delayed or Cancelled")
 
+        # If the user has cancelled the flight, the flight times are removed and pilot/airplane unassigned/ freed up for other flights
+        # Assumption: once a flight is cancelled it can no longer be reinstated
+        if status == "Cancelled":
+            new_dep_time = None
+            new_arr_time = None
+            pilot = None
+            airplane = None
+            self.db.update(
+                "Flights",
+                {"DepartureTime": new_dep_time, "ArrivalTime": new_arr_time, "Status": status, "PilotID": pilot, "AirplaneID": airplane},
+                "FlightID",
+                flight_id,
+            )
+            print(f"Flight {flight_num} cancelled successfully")
+            return
+
+        while True:
+            new_dep_time = input(f"Enter new departure time (current: {flight[2]}): ").strip() or flight[2]
+            if validate_datetime(new_dep_time):
+                break
+            print("Invalid datetime format, usage: YYYY-MM-DD HH:MM\n")
+
+        while True:
+            new_arr_time = input(f"Enter new arrival time (current: {flight[3]}): ").strip() or flight[3]
+            if not validate_datetime(new_arr_time):
+                print("Invalid datetime format, usage: YYYY-MM-DD HH:MM\n")
+                continue
+            if new_arr_time <= new_dep_time:
+                print("Arrival time must be later than departure time\n")
+                continue
+            break            
+
         self.db.update(
             "Flights",
-            {"FlightNumber": flight_num, "DepartureTime": dep_time, "ArrivalTime": arr_time, "Status": status},
+            {"DepartureTime": new_dep_time, "ArrivalTime": new_arr_time, "Status": status},
             "FlightID",
             flight_id,
         )
@@ -162,19 +175,19 @@ class Flight:
 
     # Delete an existing flight record from the database confirming with the user before deletion
     def delete_flight(self) -> None:
-        while True:
-            flight_num = input("Enter flight number of flight to delete: ").strip().upper()
-            if bool(re.fullmatch(r"[A-Z]{2}\d{3}", flight_num)):
-                flight = self.db.select_by_criteria("Flights", {"FlightNumber": flight_num})
-                if flight:
-                    break
-                print(f"Flight {flight_num} not found")
-            else:
-                print("Invalid flight number format, usage: AA000")
+        try:
+            flight = get_flight(self)
+        except Exception as e:
+            print(f"Error finding flight: {e}\n")
+            return
 
-        confirm = input(f"Are you sure you want to delete flight {flight_num}? (y/n): ").lower()
+        confirm = input(f"Enter 'y' to confirm deletion of flight {flight[1]} (anything else will cancel): ").lower()
         if confirm == "y":
-            self.db.delete("Flights", "FlightID", flight[0])
-            print(f"Flight {flight_num} deleted successfully")
+            try:
+                self.db.delete("Flights", "FlightID", flight[0])
+                print(f"Flight {flight[1]} successfully deleted")
+            except Exception as e:
+                print(f"Failed to delete flight: {e}\n")
+                return
         else:
-            print("Delete cancelled.")
+            print("Cancelled, flight not deleted")

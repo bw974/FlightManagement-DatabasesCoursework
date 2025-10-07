@@ -57,8 +57,8 @@ class DBOperations:
                 Flights.Status,
                 Origin.AirportCode AS Origin,
                 Destination.AirportCode AS Destination,
-                CASE WHEN Pilots.FirstName IS NULL AND Pilots.LastName IS NULL THEN "Unassigned" ELSE (CONCAT(Pilots.FirstName, " ", Pilots.LastName)) END AS Pilot,
-                IFNULL(Airplanes.Registration, "Unassigned") AS Airplane
+                CONCAT(Pilots.FirstName, " ", Pilots.LastName) AS Pilot,
+                Airplanes.Registration AS Airplane
             FROM Flights
             JOIN Airports AS Origin ON Flights.OriginID = Origin.AirportID
             JOIN Airports AS Destination ON Flights.DestinationID = Destination.AirportID
@@ -68,7 +68,7 @@ class DBOperations:
 
         params = ()
         if criteria:
-            condition = " WHERE " + " AND ".join([f"Flights.{col} = ?" for col in criteria.keys()])
+            condition = " WHERE " + " AND ".join([f"{col} = ?" for col in criteria.keys()])
             query += condition
             params = tuple(criteria.values())
 
@@ -103,13 +103,13 @@ class DBOperations:
         return self.cur.fetchall()
 
 
-    # SQL query to return count of flights per pilot
+    # SQL query to return count of flights per pilot, ensuring those unassigned pilots are not counted 
     def select_flights_per_pilot(self) -> list[tuple]:
         query = """
-            SELECT FlightID, IFNULL(CONCAT(Pilots.FirstName, ' ', Pilots.LastName), 'Unassigned') AS Pilot,
-                   COUNT(Flights.FlightID) AS NumFlights
+            SELECT FlightID, CONCAT(Pilots.FirstName, " ", Pilots.LastName) AS Pilot, COUNT(Flights.FlightID) AS NumFlights
             FROM Flights
             LEFT JOIN Pilots ON Flights.PilotID = Pilots.PilotID
+            WHERE Pilot != " "
             GROUP BY Pilot
             ORDER BY NumFlights DESC
         """
@@ -117,13 +117,13 @@ class DBOperations:
         return self.cur.fetchall()
 
 
-    # SQL query to return count of flights per airplane
+    # SQL query to return count of flights per airplane, ensuring unassigned airplanes are not counted
     def select_flights_per_airplane(self) -> list[tuple]:
         query = """
-            SELECT FlightID, IFNULL(Airplanes.Registration, 'Unassigned') AS Airplane,
-                   COUNT(Flights.FlightID) AS NumFlights
+            SELECT FlightID, Airplanes.Registration AS Airplane, COUNT(Flights.FlightID) AS NumFlights
             FROM Flights
             LEFT JOIN Airplanes ON Flights.AirplaneID = Airplanes.AirplaneID
+            WHERE Airplane NOT NULL
             GROUP BY Airplane
             ORDER BY NumFlights DESC
         """
